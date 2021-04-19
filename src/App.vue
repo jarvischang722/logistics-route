@@ -3,14 +3,15 @@
     <v-navigation-drawer v-model="drawer" app>
       <v-toolbar color="teal" dark>
         <v-toolbar-title>送貨路線</v-toolbar-title>
-
         <v-spacer></v-spacer>
-
-        <v-btn icon>
-          <v-icon>mdi-file-import</v-icon>
-        </v-btn>
+        <ImportBtn @set-all-driver-route="setAllDriverRoute" />
       </v-toolbar>
-
+      <v-select
+        v-model="selectDriver"
+        :items="driverList"
+        label="路線選擇"
+        no-data-text="請匯入車趟資料"
+      ></v-select>
       <AddressList
         @update-address-route="updateAddressRoute"
         :list="addressList"
@@ -26,31 +27,46 @@
     <v-main>
       <div class="google-map" id="map"></div>
     </v-main>
+    <v-dialog v-model="showDialog" persistent width="300">
+      <v-card color="primary" dark>
+        <v-card-text>
+          路線規劃中
+          <v-progress-linear
+            indeterminate
+            color="white"
+            class="mb-0"
+          ></v-progress-linear>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 
 <script>
 import AddressList from "./components/AddressList";
+import ImportBtn from "./components/ImportBtn";
 
 let map = null;
 
 export default {
   components: {
     AddressList,
+    ImportBtn,
   },
   data() {
     return {
+      showDialog: false,
       directionsService: new google.maps.DirectionsService(),
       directionsDisplay: new google.maps.DirectionsRenderer(),
       geocoder: null,
       infowindows: [],
       drawer: true,
       markers: [],
-      addressList: [
-        "高雄市鼓山區美術東四路396號",
-        "高雄市鼓山區美術北五街66號10樓",
-        "高雄市鼓山區美術東四路378號17樓",
-      ],
+      allDriverRouteMap: {},
+      driverList: [],
+      orderList: [],
+      addressList: [],
+      selectDriver: null,
       addressLatLngMap: {},
       mapOptions: {
         // 設定地圖的中心點經緯度位置
@@ -72,34 +88,40 @@ export default {
   async mounted() {
     this.initMap();
   },
-
+  watch: {
+    selectDriver(driver) {
+      this.orderList = this.allDriverRouteMap[driver];
+      this.addressList = this.orderList.map((o) => o["地址"]);
+      this.drawRoute();
+    },
+  },
   methods: {
     // 建立地圖
     async initMap() {
       // 初始化地圖
       // 透過 Map 物件建構子建立新地圖 map 物件實例，並將地圖呈現在 id 為 map 的元素中
       map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 14,
-        center: this.markers[0],
+        zoom: 16,
+        center: { lat: 22.811507757981406, lng: 120.506645000449 },
       });
       this.geocoder = new google.maps.Geocoder();
       // 放置路線圖層
       this.directionsDisplay.setMap(map);
-
-      await this.drawRoute();
-      // await this.setMarker();
     },
 
     // 繪製路線
     async drawRoute() {
+      this.showDialog = true;
       const waypoints = [];
       if (this.addressList.length > 2) {
-        this.addressList.slice(1, -1).forEach(async (address) => {
+        const wayAddressList = this.addressList.slice(1, -1);
+        for (let i = 0; i < wayAddressList.length; i++) {
+          const address = wayAddressList[i];
           waypoints.push({
             location: await this.addressToLatLng(address),
             stopover: true,
           });
-        });
+        }
       }
 
       const request = {
@@ -121,11 +143,17 @@ export default {
           } else {
             reject(status);
           }
+          this.showDialog = false;
         });
       });
     },
     updateAddressRoute() {
       this.drawRoute();
+    },
+    setAllDriverRoute(_allDriverMap) {
+      this.allDriverRouteMap = _allDriverMap;
+      this.driverList = Object.keys(_allDriverMap);
+      this.selectDriver = this.driverList.length ? this.driverList[0] : null;
     },
     async addressToLatLng(address) {
       let latLng = null;
@@ -133,15 +161,19 @@ export default {
         if (this.addressLatLngMap[address]) {
           return resolve(this.addressLatLngMap[address]);
         }
-        this.geocoder.geocode({ address: address }, (results, status) => {
-          latLng = {
-            lat: results[0].geometry.location.lat(),
-            lng: results[0].geometry.location.lng(),
-          };
+        this.geocoder.geocode({ address: address }, async (results, status) => {
           if (status == "OK") {
+            latLng = {
+              lat: results[0].geometry.location.lat(),
+              lng: results[0].geometry.location.lng(),
+            };
             this.addressLatLngMap[address] = latLng;
+            await new Promise((r) => setTimeout(r, 500));
             resolve(latLng);
           } else {
+            console.log(address);
+            console.log(results);
+            console.log(status);
             reject(
               `Geocode was not successful for the following reason: ${status}`
             );
