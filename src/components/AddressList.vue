@@ -16,7 +16,13 @@
               <v-icon v-text="icon"></v-icon>
             </v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title v-text="address"></v-list-item-title>
+              <v-list-item-title>{{
+                orderList.find((o) => o[excelHeader["ADDRESS"]] === address)[
+                  excelHeader["FLAG"]
+                ] +
+                " - " +
+                address.substring(6)
+              }}</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
         </draggable>
@@ -27,12 +33,17 @@
 
 <script>
 import draggable from "vuedraggable";
+import { EXCEL_HEADER } from "../constants";
+
 export default {
   props: {
     updateAddressRoute: {
       type: Function,
     },
     list: {
+      type: Array,
+    },
+    orderList: {
       type: Array,
     },
   },
@@ -45,6 +56,7 @@ export default {
       dragging: false,
       selectedItem: -1,
       icon: "mdi-flag",
+      excelHeader: EXCEL_HEADER,
     };
   },
   methods: {

@@ -14,6 +14,7 @@
       ></v-select>
       <AddressList
         @update-address-route="updateAddressRoute"
+        :order-list="orderList"
         :list="addressList"
       />
     </v-navigation-drawer>
@@ -67,7 +68,6 @@ export default {
       orderList: [],
       addressList: [],
       selectDriver: null,
-      addressLatLngMap: {},
       mapOptions: {
         // 設定地圖的中心點經緯度位置
         center: { lat: 25.0325917, lng: 121.5624999 },
@@ -129,6 +129,7 @@ export default {
           });
         }
       }
+
       const request = {
         origin,
         destination,
@@ -136,30 +137,42 @@ export default {
         travelMode: google.maps.DirectionsTravelMode.DRIVING,
       };
 
+      this.markers = [];
+      this.infowindows = [];
+      this.directionsDisplay.setMap(null);
+      this.directionsDisplay = null;
+      this.setMapOnAll();
+
       return new Promise((resolve, reject) => {
         this.directionsService.route(request, (response, status) => {
           if (status == google.maps.DirectionsStatus.OK) {
             // 回傳路線上每個步驟的細節
             // console.log(response.routes[0].legs[0].steps);
             // this.directionsDisplay.setDirections(response);
-            new google.maps.DirectionsRenderer({
+            this.directionsDisplay = new google.maps.DirectionsRenderer({
               map: map,
               directions: response,
               suppressMarkers: true,
             });
             const { origin, destination, waypoints } = response.request;
 
-            this.makeMarker(origin, this.orderList[0][EXCEL_HEADER.FLAG]);
-            this.makeMarker(
+            this.setMarker(
+              origin.location,
+              this.orderList[0][EXCEL_HEADER.FLAG],
+              0
+            );
+            this.setMarker(
               destination.location,
-              this.orderList[this.orderList.length - 1][EXCEL_HEADER.FLAG]
+              this.orderList[this.orderList.length - 1][EXCEL_HEADER.FLAG],
+              this.orderList.length - 1
             );
             if (waypoints && waypoints.length > 0) {
               let index = 1;
               for (const { location } of waypoints) {
-                this.makeMarker(
-                  location,
-                  this.orderList[index][EXCEL_HEADER.FLAG]
+                this.setMarker(
+                  location.location,
+                  this.orderList[index][EXCEL_HEADER.FLAG],
+                  index
                 );
                 index++;
               }
@@ -173,15 +186,6 @@ export default {
         });
       });
     },
-    makeMarker(position, label, icon, title) {
-      new google.maps.Marker({
-        position: position,
-        map: map,
-        icon: icon,
-        title: title,
-        label: label.toString(),
-      });
-    },
     updateAddressRoute() {
       this.drawRoute();
     },
@@ -190,11 +194,20 @@ export default {
       this.driverList = Object.keys(_allDriverMap);
       this.selectDriver = this.driverList.length ? this.driverList[0] : null;
     },
+    setMapOnAll() {
+      for (const marker of this.markers) {
+        marker.setMap(map);
+      }
+    },
     async addressToLatLng(address) {
       let latLng = null;
+      const storageItemKey = "addressLatLngMap";
+      const addressLatLngMap = localStorage.getItem(storageItemKey)
+        ? JSON.parse(localStorage.getItem(storageItemKey))
+        : {};
       return new Promise((resolve, reject) => {
-        if (this.addressLatLngMap[address]) {
-          return resolve(this.addressLatLngMap[address]);
+        if (addressLatLngMap[address]) {
+          return resolve(addressLatLngMap[address]);
         }
         this.geocoder.geocode({ address: address }, async (results, status) => {
           if (status == "OK") {
@@ -202,7 +215,12 @@ export default {
               lat: results[0].geometry.location.lat(),
               lng: results[0].geometry.location.lng(),
             };
-            this.addressLatLngMap[address] = latLng;
+            addressLatLngMap[address] = latLng;
+
+            localStorage.setItem(
+              storageItemKey,
+              JSON.stringify(addressLatLngMap)
+            );
             await new Promise((r) => setTimeout(r, 500));
             resolve(latLng);
           } else {
@@ -216,32 +234,29 @@ export default {
         });
       });
     },
-    setMarker() {
-      this.addressList.forEach(async (address, i) => {
-        const latLng = await this.addressToLatLng(address);
-        this.markers.push(
-          new google.maps.Marker({
-            position: latLng,
-            map: map,
-            // label: { text: i + "", color: "#fff" },
-            title: i,
-          })
-        );
-        // 加入資訊視窗
-        this.infowindows.push(
-          new google.maps.InfoWindow({
-            content: "x",
-          })
-        );
-        // 加入地圖標記點擊事件
-        this.markers[i].addListener("click", function () {
-          if (this.infowindows[i].anchor) {
-            this.infowindows[i].close();
-          } else {
-            this.infowindows[i].open(map, this.markers[i]);
-          }
-        });
-      });
+    setMarker(position, label) {
+      this.markers.push(
+        new google.maps.Marker({
+          position,
+          map: map,
+          label: { text: label.toString(), color: "#fff" },
+          title: label.toString(),
+        })
+      );
+      // 加入資訊視窗
+      this.infowindows.push(
+        new google.maps.InfoWindow({
+          content: position.toString(),
+        })
+      );
+      // 加入地圖標記點擊事件
+      // this.markers[idx].addListener("click", () => {
+      //   if (this.infowindows[idx].anchor) {
+      //     this.infowindows[idx].close();
+      //   } else {
+      //     this.infowindows[idx].open(map, this.markers[idx]);
+      //   }
+      // });
     },
   },
 };
