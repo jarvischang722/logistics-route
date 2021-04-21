@@ -45,7 +45,7 @@
 <script>
 import AddressList from "./components/AddressList";
 import ImportBtn from "./components/ImportBtn";
-
+import { EXCEL_HEADER } from "./constants";
 let map = null;
 
 export default {
@@ -91,7 +91,7 @@ export default {
   watch: {
     selectDriver(driver) {
       this.orderList = this.allDriverRouteMap[driver];
-      this.addressList = this.orderList.map((o) => o["地址"]);
+      this.addressList = this.orderList.map((o) => o[EXCEL_HEADER.ADDRESS]);
       this.drawRoute();
     },
   },
@@ -112,39 +112,74 @@ export default {
     // 繪製路線
     async drawRoute() {
       this.showDialog = true;
+      let origin = null,
+        destination = null;
       const waypoints = [];
-      if (this.addressList.length > 2) {
-        const wayAddressList = this.addressList.slice(1, -1);
-        for (let i = 0; i < wayAddressList.length; i++) {
-          const address = wayAddressList[i];
+      for (let addrIdx = 0; addrIdx < this.addressList.length; addrIdx++) {
+        const address = this.addressList[addrIdx];
+        const latLng = await this.addressToLatLng(address);
+        if (addrIdx === 0) {
+          origin = latLng;
+        } else if (addrIdx === this.addressList.length - 1) {
+          destination = latLng;
+        } else {
           waypoints.push({
-            location: await this.addressToLatLng(address),
+            location: latLng,
             stopover: true,
           });
         }
       }
-
       const request = {
-        origin: await this.addressToLatLng(this.addressList[0]),
-        destination: await this.addressToLatLng(
-          this.addressList[this.addressList.length - 1]
-        ),
+        origin,
+        destination,
         waypoints,
-        travelMode: "DRIVING",
+        travelMode: google.maps.DirectionsTravelMode.DRIVING,
       };
 
       return new Promise((resolve, reject) => {
-        this.directionsService.route(request, (result, status) => {
-          if (status == "OK") {
+        this.directionsService.route(request, (response, status) => {
+          if (status == google.maps.DirectionsStatus.OK) {
             // 回傳路線上每個步驟的細節
-            // console.log(result.routes[0].legs[0].steps);
-            this.directionsDisplay.setDirections(result);
+            // console.log(response.routes[0].legs[0].steps);
+            // this.directionsDisplay.setDirections(response);
+            new google.maps.DirectionsRenderer({
+              map: map,
+              directions: response,
+              suppressMarkers: true,
+            });
+            const { origin, destination, waypoints } = response.request;
+
+            this.makeMarker(origin, this.orderList[0][EXCEL_HEADER.FLAG]);
+            this.makeMarker(
+              destination.location,
+              this.orderList[this.orderList.length - 1][EXCEL_HEADER.FLAG]
+            );
+            if (waypoints && waypoints.length > 0) {
+              let index = 1;
+              for (const { location } of waypoints) {
+                this.makeMarker(
+                  location,
+                  this.orderList[index][EXCEL_HEADER.FLAG]
+                );
+                index++;
+              }
+            }
+
             resolve();
           } else {
             reject(status);
           }
           this.showDialog = false;
         });
+      });
+    },
+    makeMarker(position, label, icon, title) {
+      new google.maps.Marker({
+        position: position,
+        map: map,
+        icon: icon,
+        title: title,
+        label: label.toString(),
       });
     },
     updateAddressRoute() {
