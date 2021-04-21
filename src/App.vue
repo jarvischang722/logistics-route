@@ -61,7 +61,7 @@ export default {
       showDialog: false,
       directionsService: new google.maps.DirectionsService(),
       directionsDisplay: new google.maps.DirectionsRenderer(),
-      geocoder: null,
+      geocoderInstance: null,
       infowindows: [],
       drawer: true,
       markers: [],
@@ -106,7 +106,7 @@ export default {
         zoom: 16,
         center: { lat: 22.811507757981406, lng: 120.506645000449 },
       });
-      this.geocoder = new google.maps.Geocoder();
+      this.geocoderInstance = new google.maps.Geocoder();
       // 放置路線圖層
       this.directionsDisplay.setMap(map);
     },
@@ -119,7 +119,7 @@ export default {
       const waypoints = [];
       for (let addrIdx = 0; addrIdx < this.addressList.length; addrIdx++) {
         const address = this.addressList[addrIdx];
-        const latLng = await addressToLatLng(address);
+        const latLng = await addressToLatLng(address, this.geocoderInstance);
         if (addrIdx === 0) {
           origin = latLng;
         } else if (addrIdx === this.addressList.length - 1) {

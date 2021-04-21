@@ -1,4 +1,4 @@
-export const addressToLatLng = async (address) => {
+export const addressToLatLng = async (address, geocoderInstance) => {
   let latLng = null;
   const storageItemKey = "addressLatLngMap";
   const addressLatLngMap = localStorage.getItem(storageItemKey)
@@ -8,7 +8,7 @@ export const addressToLatLng = async (address) => {
     if (addressLatLngMap[address]) {
       return resolve(addressLatLngMap[address]);
     }
-    this.geocoder.geocode({ address: address }, async (results, status) => {
+    geocoderInstance.geocode({ address: address }, async (results, status) => {
       if (status == "OK") {
         latLng = {
           lat: results[0].geometry.location.lat(),
