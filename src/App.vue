@@ -47,6 +47,8 @@
 import AddressList from "./components/AddressList";
 import ImportBtn from "./components/ImportBtn";
 import { EXCEL_HEADER } from "./constants";
+import { addressToLatLng } from "./utils/map";
+
 let map = null;
 
 export default {
@@ -117,7 +119,7 @@ export default {
       const waypoints = [];
       for (let addrIdx = 0; addrIdx < this.addressList.length; addrIdx++) {
         const address = this.addressList[addrIdx];
-        const latLng = await this.addressToLatLng(address);
+        const latLng = await addressToLatLng(address);
         if (addrIdx === 0) {
           origin = latLng;
         } else if (addrIdx === this.addressList.length - 1) {
@@ -139,9 +141,7 @@ export default {
 
       this.markers = [];
       this.infowindows = [];
-      this.directionsDisplay.setMap(null);
-      this.directionsDisplay = null;
-      this.setMapOnAll();
+      this.clearMarkers();
 
       return new Promise((resolve, reject) => {
         this.directionsService.route(request, (response, status) => {
@@ -161,11 +161,7 @@ export default {
               this.orderList[0][EXCEL_HEADER.FLAG],
               0
             );
-            this.setMarker(
-              destination.location,
-              this.orderList[this.orderList.length - 1][EXCEL_HEADER.FLAG],
-              this.orderList.length - 1
-            );
+
             if (waypoints && waypoints.length > 0) {
               let index = 1;
               for (const { location } of waypoints) {
@@ -177,6 +173,12 @@ export default {
                 index++;
               }
             }
+
+            this.setMarker(
+              destination.location,
+              this.orderList[this.orderList.length - 1][EXCEL_HEADER.FLAG],
+              this.orderList.length - 1
+            );
 
             resolve();
           } else {
@@ -194,47 +196,15 @@ export default {
       this.driverList = Object.keys(_allDriverMap);
       this.selectDriver = this.driverList.length ? this.driverList[0] : null;
     },
-    setMapOnAll() {
+    clearMarkers() {
+      this.setMapOnAll(null);
+    },
+    setMapOnAll(map) {
       for (const marker of this.markers) {
         marker.setMap(map);
       }
     },
-    async addressToLatLng(address) {
-      let latLng = null;
-      const storageItemKey = "addressLatLngMap";
-      const addressLatLngMap = localStorage.getItem(storageItemKey)
-        ? JSON.parse(localStorage.getItem(storageItemKey))
-        : {};
-      return new Promise((resolve, reject) => {
-        if (addressLatLngMap[address]) {
-          return resolve(addressLatLngMap[address]);
-        }
-        this.geocoder.geocode({ address: address }, async (results, status) => {
-          if (status == "OK") {
-            latLng = {
-              lat: results[0].geometry.location.lat(),
-              lng: results[0].geometry.location.lng(),
-            };
-            addressLatLngMap[address] = latLng;
-
-            localStorage.setItem(
-              storageItemKey,
-              JSON.stringify(addressLatLngMap)
-            );
-            await new Promise((r) => setTimeout(r, 500));
-            resolve(latLng);
-          } else {
-            console.log(address);
-            console.log(results);
-            console.log(status);
-            reject(
-              `Geocode was not successful for the following reason: ${status}`
-            );
-          }
-        });
-      });
-    },
-    setMarker(position, label) {
+    setMarker(position, label, idx) {
       this.markers.push(
         new google.maps.Marker({
           position,
@@ -250,13 +220,13 @@ export default {
         })
       );
       // 加入地圖標記點擊事件
-      // this.markers[idx].addListener("click", () => {
-      //   if (this.infowindows[idx].anchor) {
-      //     this.infowindows[idx].close();
-      //   } else {
-      //     this.infowindows[idx].open(map, this.markers[idx]);
-      //   }
-      // });
+      this.markers[idx].addListener("click", () => {
+        if (this.infowindows[idx].anchor) {
+          this.infowindows[idx].close();
+        } else {
+          this.infowindows[idx].open(map, this.markers[idx]);
+        }
+      });
     },
   },
 };
