@@ -20,14 +20,14 @@
     </v-navigation-drawer>
 
     <v-app-bar app>
-      <v-app-bar-nav-icon></v-app-bar-nav-icon>
-
+      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>竣騰商行路線系統</v-toolbar-title>
     </v-app-bar>
 
     <v-main>
       <div class="google-map" id="map"></div>
     </v-main>
+
     <v-dialog v-model="showDialog" persistent width="300">
       <v-card color="primary" dark>
         <v-card-text>
@@ -64,7 +64,7 @@ export default {
       geocoderInstance: null,
       infowindows: [],
       drawer: true,
-      markers: [],
+      markers: new Array(),
       allDriverRouteMap: {},
       driverList: [],
       orderList: [],
@@ -94,6 +94,7 @@ export default {
     selectDriver(driver) {
       this.orderList = this.allDriverRouteMap[driver];
       this.addressList = this.orderList.map((o) => o[EXCEL_HEADER.ADDRESS]);
+      this.clearMarkers();
       this.drawRoute();
     },
   },
@@ -141,14 +142,12 @@ export default {
 
       this.markers = [];
       this.infowindows = [];
-      this.clearMarkers();
+      this.directionsDisplay.setMap(null);
 
       return new Promise((resolve, reject) => {
         this.directionsService.route(request, (response, status) => {
           if (status == google.maps.DirectionsStatus.OK) {
             // 回傳路線上每個步驟的細節
-            // console.log(response.routes[0].legs[0].steps);
-            // this.directionsDisplay.setDirections(response);
             this.directionsDisplay = new google.maps.DirectionsRenderer({
               map: map,
               directions: response,
