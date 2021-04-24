@@ -111,84 +111,74 @@ export default {
       // 放置路線圖層
       this.directionsDisplay.setMap(map);
     },
-
+    updateAddressRoute(sortedOrderList) {
+      this.orderList = sortedOrderList;
+      this.allDriverRouteMap[this.selectDriver] = this.orderList;
+      this.drawRoute();
+    },
     // 繪製路線
     async drawRoute() {
-      this.showDialog = true;
-      let origin = null,
-        destination = null;
-      const waypoints = [];
-      for (let addrIdx = 0; addrIdx < this.addressList.length; addrIdx++) {
-        const address = this.addressList[addrIdx];
-        const latLng = await addressToLatLng(address, this.geocoderInstance);
-        if (addrIdx === 0) {
-          origin = latLng;
-        } else if (addrIdx === this.addressList.length - 1) {
-          destination = latLng;
-        } else {
-          waypoints.push({
-            location: latLng,
-            stopover: true,
-          });
+      try {
+        this.showDialog = true;
+        this.markers = [];
+        this.infowindows = [];
+        this.directionsDisplay.setMap(null);
+
+        const requestGroup = [];
+        let groupIdx = 0;
+        let tempRequest = { waypoints: [] };
+
+        for (let addrIdx = 0; addrIdx < this.addressList.length; addrIdx++) {
+          const address = this.addressList[addrIdx];
+          const latLng = await addressToLatLng(address, this.geocoderInstance);
+          this.setMarker(
+            latLng,
+            this.orderList[addrIdx][EXCEL_HEADER.FLAG],
+            addrIdx
+          );
+          // 25個點分一組，因為google map directionsService 只接受25個點(origin:1, destination:1, waypoints:23)
+          if (groupIdx === 0) {
+            tempRequest.origin = latLng;
+            groupIdx++;
+          } else if (
+            groupIdx === 24 ||
+            addrIdx === this.addressList.length - 1
+          ) {
+            tempRequest.destination = latLng;
+            tempRequest.travelMode = google.maps.DirectionsTravelMode.DRIVING;
+            requestGroup.push(tempRequest);
+            tempRequest = { origin: latLng, waypoints: [] };
+            groupIdx = 1;
+          } else {
+            tempRequest.waypoints.push({ location: latLng, stopover: true });
+            groupIdx++;
+          }
         }
+        const promiseArr = requestGroup.map((request) =>
+          this.routeWayPoint(request)
+        );
+        await Promise.all(promiseArr);
+      } catch (error) {
+        alert(`系統發生錯誤 :${error.message}`);
+        console.error(error);
       }
-
-      const request = {
-        origin,
-        destination,
-        waypoints,
-        travelMode: google.maps.DirectionsTravelMode.DRIVING,
-      };
-
-      this.markers = [];
-      this.infowindows = [];
-      this.directionsDisplay.setMap(null);
-
+    },
+    async routeWayPoint(request) {
       return new Promise((resolve, reject) => {
         this.directionsService.route(request, (response, status) => {
           if (status == google.maps.DirectionsStatus.OK) {
-            // 回傳路線上每個步驟的細節
-            this.directionsDisplay = new google.maps.DirectionsRenderer({
-              map: map,
-              directions: response,
+            this.directionsDisplay.setMap(map);
+            this.directionsDisplay.setOptions({
               suppressMarkers: true,
             });
-            const { origin, destination, waypoints } = response.request;
-
-            this.setMarker(
-              origin.location,
-              this.orderList[0][EXCEL_HEADER.FLAG],
-              0
-            );
-
-            if (waypoints && waypoints.length > 0) {
-              let index = 1;
-              for (const { location } of waypoints) {
-                this.setMarker(
-                  location.location,
-                  this.orderList[index][EXCEL_HEADER.FLAG],
-                  index
-                );
-                index++;
-              }
-            }
-
-            this.setMarker(
-              destination.location,
-              this.orderList[this.orderList.length - 1][EXCEL_HEADER.FLAG],
-              this.orderList.length - 1
-            );
-
-            resolve();
+            this.directionsDisplay.setDirections(response);
+            resolve(status);
           } else {
             reject(status);
           }
           this.showDialog = false;
         });
       });
-    },
-    updateAddressRoute() {
-      this.drawRoute();
     },
     setAllDriverRoute(_allDriverMap) {
       this.allDriverRouteMap = _allDriverMap;

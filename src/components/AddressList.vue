@@ -61,9 +61,12 @@ export default {
   },
   methods: {
     onEnd(ent) {
-      const { newDraggableIndex } = ent;
+      const { newDraggableIndex, oldDraggableIndex } = ent;
       this.selectedItem = newDraggableIndex;
-      this.$emit("update-address-route");
+      const sortedOrderList = Array.from(this.orderList);
+      sortedOrderList[oldDraggableIndex] = this.orderList[newDraggableIndex];
+      sortedOrderList[newDraggableIndex] = this.orderList[oldDraggableIndex];
+      this.$emit("update-address-route", sortedOrderList);
     },
   },
 };
