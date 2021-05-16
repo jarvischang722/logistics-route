@@ -93,9 +93,12 @@ export default {
   watch: {
     selectDriver(driver) {
       this.orderList = this.allDriverRouteMap[driver];
-      this.addressList = this.orderList.map((o) => o[EXCEL_HEADER.ADDRESS]);
+      this.addressList = this.orderList.map(o => o[EXCEL_HEADER.ADDRESS]);
       this.clearMarkers();
       this.drawRoute();
+    },
+    orderList(newOrderList) {
+      this.allDriverRouteMap[this.selectDriver] = newOrderList;
     },
   },
   methods: {
@@ -104,8 +107,8 @@ export default {
       // 初始化地圖
       // 透過 Map 物件建構子建立新地圖 map 物件實例，並將地圖呈現在 id 為 map 的元素中
       map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 16,
-        center: { lat: 22.811507757981406, lng: 120.506645000449 },
+        zoom: 13,
+        center: { lat: 22.6140951, lng: 120.3110925 },
       });
       this.geocoderInstance = new google.maps.Geocoder();
       // 放置路線圖層
@@ -119,7 +122,7 @@ export default {
         destination = null;
       const waypoints = [];
       for (let addrIdx = 0; addrIdx < this.addressList.length; addrIdx++) {
-        const address = this.addressList[addrIdx];
+        const address = this.addressList[addrIdx].split("(")[0];
         const latLng = await addressToLatLng(address, this.geocoderInstance);
         if (addrIdx === 0) {
           origin = latLng;
@@ -152,6 +155,7 @@ export default {
               map: map,
               directions: response,
               suppressMarkers: true,
+              preserveViewport: true,
             });
             const { origin, destination, waypoints } = response.request;
 
@@ -187,7 +191,8 @@ export default {
         });
       });
     },
-    updateAddressRoute() {
+    updateAddressRoute({ sortedOrderList }) {
+      this.orderList = sortedOrderList;
       this.drawRoute();
     },
     setAllDriverRoute(_allDriverMap) {
@@ -215,7 +220,7 @@ export default {
       // 加入資訊視窗
       this.infowindows.push(
         new google.maps.InfoWindow({
-          content: position.toString(),
+          content: this.orderList[idx][EXCEL_HEADER.ADDRESS],
         })
       );
       // 加入地圖標記點擊事件
@@ -223,6 +228,7 @@ export default {
         if (this.infowindows[idx].anchor) {
           this.infowindows[idx].close();
         } else {
+          console.log(this.markers[idx]);
           this.infowindows[idx].open(map, this.markers[idx]);
         }
       });

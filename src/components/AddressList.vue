@@ -17,7 +17,7 @@
             </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title>{{
-                orderList.find((o) => o[excelHeader["ADDRESS"]] === address)[
+                orderList.find(o => o[excelHeader["ADDRESS"]] === address)[
                   excelHeader["FLAG"]
                 ] +
                 " - " +
@@ -61,9 +61,36 @@ export default {
   },
   methods: {
     onEnd(ent) {
-      const { newDraggableIndex } = ent;
+      const { newDraggableIndex, oldDraggableIndex } = ent;
+      const sortedOrderList = JSON.parse(JSON.stringify(this.orderList));
+      sortedOrderList[newDraggableIndex] = this.orderList[oldDraggableIndex];
+      let startIdx = null,
+        endIdx = null,
+        startOrderListIdx = null;
+
+      let setValuesArr = [];
+      if (newDraggableIndex > oldDraggableIndex) {
+        startIdx = oldDraggableIndex;
+        endIdx = newDraggableIndex - 1;
+        startOrderListIdx = oldDraggableIndex + 1;
+      } else if (oldDraggableIndex > newDraggableIndex) {
+        startIdx = newDraggableIndex + 1;
+        endIdx = oldDraggableIndex;
+        startOrderListIdx = newDraggableIndex;
+      }
+
+      for (let i = 0; i <= endIdx - startIdx; i++) {
+        setValuesArr.push(this.orderList[startOrderListIdx + i]);
+      }
+
+      for (let idx = startIdx; idx <= endIdx; idx++) {
+        sortedOrderList[idx] = setValuesArr.shift();
+      }
+
       this.selectedItem = newDraggableIndex;
-      this.$emit("update-address-route");
+      this.$emit("update-address-route", {
+        sortedOrderList,
+      });
     },
   },
 };
