@@ -5,6 +5,7 @@
         <v-toolbar-title>送貨路線</v-toolbar-title>
         <v-spacer></v-spacer>
         <ImportBtn @set-all-driver-route="setAllDriverRoute" />
+        <ExportBtn :all-driver-route-map="allDriverRouteMap" />
       </v-toolbar>
       <v-select
         v-model="selectDriver"
@@ -46,6 +47,7 @@
 <script>
 import AddressList from "./components/AddressList";
 import ImportBtn from "./components/ImportBtn";
+import ExportBtn from "./components/ExportBtn";
 import { EXCEL_HEADER } from "./constants";
 import { addressToLatLng } from "./utils/map";
 
@@ -55,6 +57,7 @@ export default {
   components: {
     AddressList,
     ImportBtn,
+    ExportBtn,
   },
   data() {
     return {
