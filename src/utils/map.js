@@ -17,12 +17,9 @@ export const addressToLatLng = async (address, geocoderInstance) => {
         addressLatLngMap[address] = latLng;
 
         localStorage.setItem(storageItemKey, JSON.stringify(addressLatLngMap));
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 500));
         resolve(latLng);
       } else {
-        console.log(address);
-        console.log(results);
-        console.log(status);
         reject(
           `Geocode was not successful for the following reason: ${status}`
         );

@@ -22,16 +22,17 @@ export default {
       } else if (!/\.(xls|xlsx)$/.test(name.toLowerCase())) {
         return alert("只能選擇xlsx檔案");
       }
+      this.setFileName(name);
       const allDriverRouteMap = {};
       const fileReader = new FileReader();
-      fileReader.onload = (ev) => {
+      fileReader.onload = ev => {
         try {
           const data = ev.target.result;
           const XLSX = xlsx;
           const workbook = XLSX.read(data, {
             type: "binary",
           });
-          workbook.SheetNames.forEach((driverName) => {
+          workbook.SheetNames.forEach(driverName => {
             const ws = XLSX.utils.sheet_to_json(workbook.Sheets[driverName]);
             const routeList = [];
             for (let i = 0; i < ws.length; i++) {
@@ -47,6 +48,9 @@ export default {
       fileReader.readAsBinaryString(file);
       const input = document.getElementById("upload");
       input.value = "";
+    },
+    setFileName(name) {
+      this.$emit("set-filename", name);
     },
   },
 };

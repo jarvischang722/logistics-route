@@ -8,11 +8,16 @@
 
 <script>
 import XLSX from "xlsx";
+import moment from "moment";
 
 export default {
   props: {
     allDriverRouteMap: {
       type: Object,
+      required: true,
+    },
+    filename: {
+      type: String,
       required: true,
     },
   },
@@ -22,13 +27,17 @@ export default {
         alert("請匯入車趟檔案");
         return;
       }
-      var wb = XLSX.utils.book_new();
+      const wb = XLSX.utils.book_new();
 
       Object.keys(this.allDriverRouteMap).forEach(driver => {
         const tempWS = XLSX.utils.json_to_sheet(this.allDriverRouteMap[driver]);
         XLSX.utils.book_append_sheet(wb, tempWS, driver);
       });
-      XLSX.writeFile(wb, "export.xlsx");
+      const [name, fileType] = this.filename.split(".");
+      XLSX.writeFile(
+        wb,
+        `${name}_匯出_${moment().format("YYYYMMDDHHmmss")}.${fileType}`
+      );
     },
   },
 };

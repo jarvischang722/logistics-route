@@ -4,8 +4,14 @@
       <v-toolbar color="teal" dark>
         <v-toolbar-title>送貨路線</v-toolbar-title>
         <v-spacer></v-spacer>
-        <ImportBtn @set-all-driver-route="setAllDriverRoute" />
-        <ExportBtn :all-driver-route-map="allDriverRouteMap" />
+        <ImportBtn
+          @set-all-driver-route="setAllDriverRoute"
+          @set-filename="setFileName"
+        />
+        <ExportBtn
+          :all-driver-route-map="allDriverRouteMap"
+          :filename="fileName"
+        />
       </v-toolbar>
       <v-select
         v-model="selectDriver"
@@ -88,6 +94,7 @@ export default {
         // 設定是否讓使用者可以切換地圖樣式：一般、衛星圖等
         mapTypeControl: false,
       },
+      fileName: "",
     };
   },
   async mounted() {
@@ -97,7 +104,6 @@ export default {
     selectDriver(driver) {
       this.orderList = this.allDriverRouteMap[driver];
       this.addressList = this.orderList.map(o => o[EXCEL_HEADER.ADDRESS]);
-      this.clearMarkers();
       this.drawRoute();
     },
     orderList(newOrderList) {
@@ -120,6 +126,7 @@ export default {
 
     // 繪製路線
     async drawRoute() {
+      this.clearMarkers();
       this.showDialog = true;
       let origin = null,
         destination = null;
@@ -203,6 +210,9 @@ export default {
       this.driverList = Object.keys(_allDriverMap);
       this.selectDriver = this.driverList.length ? this.driverList[0] : null;
     },
+    setFileName(_fileName) {
+      this.fileName = _fileName;
+    },
     clearMarkers() {
       this.setMapOnAll(null);
     },
@@ -231,7 +241,6 @@ export default {
         if (this.infowindows[idx].anchor) {
           this.infowindows[idx].close();
         } else {
-          console.log(this.markers[idx]);
           this.infowindows[idx].open(map, this.markers[idx]);
         }
       });
